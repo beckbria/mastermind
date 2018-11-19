@@ -1,23 +1,27 @@
 #include <algorithm>
 #include <stack>
+#include <utility>
 #include "MastermindResult.h"
 
-bool MastermindResult::matches(unsigned int answer) {
-	auto answerDigits = splitToDigits(answer, m_guessDigits.size());
-	auto answerDigitCounts = countDigits(answerDigits);
+bool MastermindResult::matches(const std::string& answer) const {
+	if (answer.size() != m_guess.size()) throw "Incompatible candidate length";
+	
+	auto answerCounts = countCharacters(answer);
 
 	unsigned int exactMatches = 0;
 	unsigned int misplacedMatches = 0;
 
 	// Step 1: Count all partial matches
-	for (size_t i = 0; i < m_guessDigitCount.size(); ++i) {
-		unsigned int matches = std::min(m_guessDigitCount[i], answerDigitCounts[i]);
+	for (const auto& answerChar : answerCounts) {
+		auto it = m_guessCounts.find(answerChar.first);
+		const unsigned int guessCount = (it == m_guessCounts.end()) ? 0 : it->second;
+		const unsigned int matches = std::min(guessCount, answerChar.second);
 		misplacedMatches += matches;
 	}
 
 	// Step 2: Count all exact matches and subtract them from partial matches
-	for (size_t i = 0; i < m_guessDigits.size(); ++i) {
-		if (answerDigits[i] == m_guessDigits[i]) {
+	for (size_t i = 0; i < m_guess.size(); ++i) {
+		if (answer[i] == m_guess[i]) {
 			++exactMatches;
 			--misplacedMatches;
 		}
@@ -26,59 +30,38 @@ bool MastermindResult::matches(unsigned int answer) {
 	return (m_misplaced == misplacedMatches) && (m_correctlyPlaced == exactMatches);
 }
 
-std::vector<unsigned int> MastermindResult::splitToDigits(unsigned int n, unsigned int length) {
-	std::stack<unsigned int> digits;
-	while (n > 0) {
-		digits.push(n % 10);
-		n /= 10;
-	}
-	if (digits.size() > length) {
-		throw "Provided number larger than requested length";
-	}
-	while (digits.size() < length) {
-		digits.push(0);
+std::unordered_map<std::string::value_type, unsigned int> MastermindResult::countCharacters(const std::string& str) {
+	std::unordered_map<std::string::value_type, unsigned int> seen;
+	for (auto c : str) {
+		auto it = seen.find(c);
+		if (it == seen.end()) {
+			seen[c] = 1;
+		} else {
+			it->second++;
+		}
 	}
 
-	std::vector<unsigned int> orderedDigits;
-	orderedDigits.resize(digits.size());
-	auto it = orderedDigits.begin();
-	while (!digits.empty()) {
-		*it++ = digits.top();
-		digits.pop();
-	}
-	return orderedDigits;
+	return seen;
 }
 
-std::vector<unsigned int> MastermindResult::countDigits(const std::vector<unsigned int>& digits) {
-	std::vector<unsigned int> count(10, 0);
-	for (unsigned int i : digits) ++count[i];
-	return count;
-}
-
-MastermindResult MastermindResult::MastermindResultBuilder::build() {
-	if (!m_hasGuess) {
+MastermindResult MastermindResult::Builder::build() {
+	if (m_guess.size() < 1) {
 		throw "Guess is required";
 	}
-	return MastermindResult(m_guess, m_length, m_placed, m_misplaced);
+	return MastermindResult(m_guess, m_placed, m_misplaced);
 }
 
-MastermindResult::MastermindResultBuilder& MastermindResult::MastermindResultBuilder::setGuess(unsigned int guess) {
-	m_guess = guess;
-	m_hasGuess = true;
+MastermindResult::Builder& MastermindResult::Builder::setGuess(std::string&& guess) {
+	m_guess = std::forward<std::string>(guess);
 	return *this;
 }
 
-MastermindResult::MastermindResultBuilder& MastermindResult::MastermindResultBuilder::setLength(unsigned int length) {
-	m_length = length;
-	return *this;
-}
-
-MastermindResult::MastermindResultBuilder& MastermindResult::MastermindResultBuilder::setCorrectlyPlaced(unsigned int placed) {
+MastermindResult::Builder& MastermindResult::Builder::setCorrectlyPlaced(unsigned int placed) {
 	m_placed = placed;
 	return *this;
 }
 
-MastermindResult::MastermindResultBuilder& MastermindResult::MastermindResultBuilder::setMisplaced(unsigned int misplaced) {
+MastermindResult::Builder& MastermindResult::Builder::setMisplaced(unsigned int misplaced) {
 	m_misplaced = misplaced;
 	return *this;
 }

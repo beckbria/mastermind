@@ -1,7 +1,8 @@
 #ifndef MASTERMINDRESULT_H
 #define MASTERMINDRESULT_H
 
-#include <vector>
+#include <string>
+#include <unordered_map>
 
 /**
  MastermindResult represents the outcome of a guess in the game mastermind.
@@ -11,37 +12,34 @@
  */
 class MastermindResult {
 public:
-	class MastermindResultBuilder {
+	class Builder {
 	public:
 		MastermindResult build();
-		MastermindResultBuilder& setGuess(unsigned int guess);
-		MastermindResultBuilder& setLength(unsigned int length);
-		MastermindResultBuilder& setCorrectlyPlaced(unsigned int placed);
-		MastermindResultBuilder& setMisplaced(unsigned int misplaced);
+		Builder& setGuess(std::string&& guess);
+		Builder& setCorrectlyPlaced(unsigned int placed);
+		Builder& setMisplaced(unsigned int misplaced);
 
 	private:
-		bool m_hasGuess = false;
-		unsigned int m_guess;
-		unsigned int m_length = 4;
+		std::string m_guess = "";
 		unsigned int m_placed = 0;
 		unsigned int m_misplaced = 0;
 	};
-	static MastermindResultBuilder builder() { return MastermindResultBuilder(); }
+	static Builder builder() { return Builder(); }
 
-	bool matches(unsigned int answer);
+	bool matches(const std::string& answer) const;
+	size_t size() const { return m_guess.size(); }
 
 private:
-	MastermindResult(unsigned int guess, unsigned int length, unsigned int placed, unsigned int misplaced)
-		: m_guessDigits(splitToDigits(guess, length)),
-			m_guessDigitCount(countDigits(m_guessDigits)),
+	MastermindResult(const std::string& guess, unsigned int placed, unsigned int misplaced)
+		: m_guess(guess),
+			m_guessCounts(countCharacters(m_guess)),
 			m_correctlyPlaced(placed),
 			m_misplaced(misplaced) {}
 
-	static std::vector<unsigned int> splitToDigits(unsigned int n, unsigned int length);
-	static std::vector<unsigned int> countDigits(const std::vector<unsigned int>& digits);
+	static std::unordered_map<std::string::value_type, unsigned int> countCharacters(const std::string& str);
 
-	const std::vector<unsigned int> m_guessDigits;
-	const std::vector<unsigned int> m_guessDigitCount;
+	const std::string m_guess;
+	const std::unordered_map<std::string::value_type, unsigned int> m_guessCounts;
 	unsigned int m_digitCount[10] = {};
 	const unsigned int m_correctlyPlaced;
 	const unsigned int m_misplaced;
